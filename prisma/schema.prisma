@@ -1,0 +1,140 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// ---------------------------------------------------------------------------
+// USERS
+// ---------------------------------------------------------------------------
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  books         Book[]
+  conversations Conversation[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// SESSIONS  (JWT refresh-token rotation store)
+// ---------------------------------------------------------------------------
+model Session {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  refreshToken String   @unique @map("refresh_token")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ---------------------------------------------------------------------------
+// BOOKS
+// ---------------------------------------------------------------------------
+model Book {
+  id          String     @id @default(uuid())
+  userId      String     @map("user_id")
+  title       String
+  author      String?
+  language    String     @default("ar")
+  totalPages  Int        @map("total_pages")
+  storagePath String     @map("storage_path")   // Local file path (e.g., '/uploads/books/filename.pdf') or S3 URL
+  status      BookStatus @default(PENDING)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks        Chunk[]
+  conversations Conversation[]
+
+  @@index([userId])
+  @@map("books")
+}
+
+enum BookStatus {
+  PENDING     // uploaded, not yet processed
+  PROCESSING  // chunking + embedding in progress
+  READY       // fully indexed, available for RAG
+  FAILED      // processing error
+}
+
+// ---------------------------------------------------------------------------
+// CHUNKS  (one row = one chunk of text. A single page might have multiple chunks)
+// ---------------------------------------------------------------------------
+model Chunk {
+  id          String   @id @default(uuid())
+  bookId      String   @map("book_id")
+  pageNumber  Int      @map("page_number")
+  chunkIndex  Int      @default(0) @map("chunk_index") // Important for long pages
+  content     String                                   // raw extracted text
+  tokenCount  Int      @default(0) @map("token_count") // Helps manage LLM context limits
+  
+  // pgvector column
+  embedding   Unsupported("vector(1536)")?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  // Composite unique: prevents duplicate passages on the same page
+  @@unique([bookId, pageNumber, chunkIndex])
+  @@index([bookId])
+  @@map("chunks")
+}
+
+// ---------------------------------------------------------------------------
+// CONVERSATIONS
+// ---------------------------------------------------------------------------
+model Conversation {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  bookId       String   @map("book_id")
+  title        String?                           // auto-generated from first message
+  languageCode String   @default("en") @map("language_code") // Practice language (en, fr, ar, etc.)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book     Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId])
+  @@index([bookId])
+  @@map("conversations")
+}
+
+// ---------------------------------------------------------------------------
+// MESSAGES
+// ---------------------------------------------------------------------------
+model Message {
+  id             String      @id @default(uuid())
+  conversationId String      @map("conversation_id")
+  role           MessageRole
+  content        String
+  sourcePage     Int?        @map("source_page")
+  audioPath      String?     @map("audio_path")  // TTS cache path in storage
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+enum MessageRole {
+  user
+  assistant
+}
