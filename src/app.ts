@@ -4,6 +4,11 @@ import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
+import authRouter from "./modules/auth/auth.routes";
+import userRouter from "./modules/user/user.routes";
+import bookRouter from "./modules/book/book.routes";
+import chunkRouter from "./modules/chunk/chunk.routes";
+import conversationRouter from "./modules/conversation/conversation.routes";
 
 const app = express();
 
@@ -65,6 +70,12 @@ app.use("/api/v1/auth", authLimiter);
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/users", userRouter);
+app.use("/api/v1/books", bookRouter);
+app.use("/api/v1/books/:bookId/chunks", chunkRouter);
+app.use("/api/v1/conversations", conversationRouter);
 
 app.use(express.static("public"));
 
