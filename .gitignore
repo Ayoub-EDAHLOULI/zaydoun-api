@@ -24,3 +24,8 @@ build/
 !eslintrc.js
 !.prettierrc.js
 !commitlint.config.js
+
+# Docker files
+.dockerignore
+Dockerfile
+docker-compose.yml
