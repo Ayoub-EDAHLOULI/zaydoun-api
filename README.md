@@ -26,5 +26,5 @@ This API serves as the brain for Phase 1 (Web/Mobile Apps) and Phase 2 (Raspberr
 
 ### 1. Clone the repository
 ```bash
-git clone [https://github.com/your-username/zaydoun-api.git](https://github.com/your-username/zaydoun-api.git)
+git clone [https://github.com/Ayoub-EDAHLOULI/zaydoun-api.git](https://github.com/Ayoub-EDAHLOULI/zaydoun-api.git)
 cd zaydoun-api
