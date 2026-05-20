@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Prisma
+/prisma/generated
+/generated/prisma
+
+# Compiled output
+dist/
+build/
+*.js
+*.js.map
+*.d.ts
+
+# Exceptions
+!jest.config.js
+!babel.config.js
+!webpack.config.js
+!eslintrc.js
+!.prettierrc.js
+!commitlint.config.js
