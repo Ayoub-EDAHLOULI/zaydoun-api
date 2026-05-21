@@ -3,6 +3,8 @@ import { conversationService } from "./conversation.service";
 import { ApiResponse } from "../../shared/utils/response";
 import { StatusCodes } from "../../shared/constants/status-codes";
 import { catchAsync } from "../../shared/utils/catchAsync";
+import { chatService } from "../chat/chat.service";
+import { AppError } from "../../shared/utils/errors";
 
 export const conversationController = {
   listConversations: catchAsync(async (req: Request, res: Response) => {
@@ -55,6 +57,19 @@ export const conversationController = {
       "Message added successfully",
       StatusCodes.CREATED,
     );
+  }),
+
+  talkToZaydoun: catchAsync(async (req: Request, res: Response) => {
+    if (!req.file)
+      throw new AppError("Audio file required", StatusCodes.BAD_REQUEST);
+
+    const result = await chatService.processVoiceMessage(
+      req.params.id as string,
+      req.user!.userId,
+      req.file.path,
+    );
+
+    return ApiResponse.success(res, result, "Zaydoun responded");
   }),
 
   deleteConversation: catchAsync(async (req: Request, res: Response) => {
