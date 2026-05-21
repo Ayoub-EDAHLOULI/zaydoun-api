@@ -22,7 +22,18 @@ const getCookieOptions = (req: Request) => {
 };
 
 export const authController = {
-  login: catchAsync(async (req, res) => {
+  register: catchAsync(async (req: Request, res: Response) => {
+    const result = await authService.register(req.body);
+    res.cookie("refreshToken", result.accessToken, getCookieOptions(req));
+    return ApiResponse.success(
+      res,
+      result,
+      "Registration successful",
+      StatusCodes.CREATED,
+    );
+  }),
+
+  login: catchAsync(async (req: Request, res: Response) => {
     const result = await authService.login(req.body);
     res.cookie("refreshToken", result.accessToken, getCookieOptions(req));
     return ApiResponse.success(res, result, "Login successful");
@@ -70,5 +81,10 @@ export const authController = {
       updatedUser,
       "Profile updated successfully",
     );
+  }),
+
+  changePassword: catchAsync(async (req: Request, res: Response) => {
+    await authService.changePassword(req.user!.userId, req.body);
+    return ApiResponse.success(res, null, "Password changed successfully");
   }),
 };

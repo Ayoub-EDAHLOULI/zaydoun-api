@@ -3,20 +3,20 @@ import { z } from "zod";
 export const conversationValidation = {
   createConversation: z.object({
     body: z.object({
-      bookId: z.string().uuid("Invalid book ID"),
+      bookId: z.uuid("Invalid book ID"),
       languageCode: z.string().length(2).toLowerCase().default("en"),
     }),
   }),
 
   conversationId: z.object({
     params: z.object({
-      id: z.string().uuid("Invalid conversation ID"),
+      id: z.uuid("Invalid conversation ID"),
     }),
   }),
 
   addMessage: z.object({
     params: z.object({
-      id: z.string().uuid("Invalid conversation ID"),
+      id: z.uuid("Invalid conversation ID"),
     }),
     body: z.object({
       role: z.enum(["user", "assistant"]),

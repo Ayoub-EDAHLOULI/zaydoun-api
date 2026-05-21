@@ -1,6 +1,12 @@
+export interface RegisterDto {
+  name: string;
+  email: string;
+  password: string;
+}
+
 export interface LoginDto {
   email: string;
-  name: string;
+  password: string;
 }
 
 export interface AuthResponse {
@@ -14,4 +20,9 @@ export interface AuthResponse {
 
 export interface UpdateProfileDto {
   name?: string;
+}
+
+export interface ChangePasswordDto {
+  currentPassword: string;
+  newPassword: string;
 }

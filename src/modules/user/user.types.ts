@@ -17,4 +17,5 @@ export interface UserWithStats extends UserProfile {
 
 export interface UpdateUserDto {
   name?: string;
+  email?: string;
 }

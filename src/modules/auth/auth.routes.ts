@@ -6,16 +6,27 @@ import { authValidation } from "./auth.validation";
 
 const router = Router();
 
+router.post(
+  "/register",
+  validate(authValidation.register),
+  authController.register,
+);
 router.post("/login", validate(authValidation.login), authController.login);
 router.post("/refresh-token", authController.refreshToken);
 router.post("/logout", authController.logout);
 
 router.get("/profile", authenticate, authController.getProfile);
-router.put(
+router.patch(
   "/profile",
   authenticate,
   validate(authValidation.updateProfile),
   authController.updateProfile,
+);
+router.patch(
+  "/change-password",
+  authenticate,
+  validate(authValidation.changePassword),
+  authController.changePassword,
 );
 
 export default router;

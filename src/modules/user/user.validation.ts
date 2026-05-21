@@ -9,12 +9,13 @@ export const userValidation = {
         .max(100)
         .trim()
         .optional(),
+      email: z.email("Invalid email format").toLowerCase().trim().optional(),
     }),
   }),
 
   userId: z.object({
     params: z.object({
-      id: z.string().uuid("Invalid user ID"),
+      id: z.uuid("Invalid user ID"),
     }),
   }),
 };

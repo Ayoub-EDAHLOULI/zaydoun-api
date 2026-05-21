@@ -15,7 +15,7 @@ export const bookValidation = {
 
   bookId: z.object({
     params: z.object({
-      id: z.string().uuid("Invalid book ID"),
+      id: z.uuid("Invalid book ID"),
     }),
   }),
 };
