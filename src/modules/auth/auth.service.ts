@@ -68,7 +68,11 @@ export const authService = {
     });
     await createSession(user.id, tokens.refreshToken);
 
-    return { user, accessToken: tokens.accessToken };
+    return {
+      user,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
   },
 
   async login(data: LoginDto): Promise<AuthResponse> {
@@ -99,6 +103,7 @@ export const authService = {
     return {
       user: { id: user.id, name: user.name, email: user.email },
       accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     };
   },
 

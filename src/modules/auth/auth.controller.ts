@@ -24,10 +24,10 @@ const getCookieOptions = (req: Request) => {
 export const authController = {
   register: catchAsync(async (req: Request, res: Response) => {
     const result = await authService.register(req.body);
-    res.cookie("refreshToken", result.accessToken, getCookieOptions(req));
+    res.cookie("refreshToken", result.refreshToken, getCookieOptions(req));
     return ApiResponse.success(
       res,
-      result,
+      { user: result.user, accessToken: result.accessToken },
       "Registration successful",
       StatusCodes.CREATED,
     );
@@ -35,8 +35,12 @@ export const authController = {
 
   login: catchAsync(async (req: Request, res: Response) => {
     const result = await authService.login(req.body);
-    res.cookie("refreshToken", result.accessToken, getCookieOptions(req));
-    return ApiResponse.success(res, result, "Login successful");
+    res.cookie("refreshToken", result.refreshToken, getCookieOptions(req));
+    return ApiResponse.success(
+      res,
+      { user: result.user, accessToken: result.accessToken },
+      "Login successful",
+    );
   }),
 
   refreshToken: catchAsync(async (req: Request, res: Response) => {
