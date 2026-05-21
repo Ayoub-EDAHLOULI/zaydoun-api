@@ -1,68 +1,36 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import { chunkService } from "./chunk.service";
 import { ApiResponse } from "../../shared/utils/response";
 import { StatusCodes } from "../../shared/constants/status-codes";
-import { AppError } from "../../shared/utils/errors";
+import { catchAsync } from "../../shared/utils/catchAsync";
 
 export const chunkController = {
-  async getChunksByBook(req: Request, res: Response, next: NextFunction) {
-    try {
-      if (!req.user)
-        return ApiResponse.error(
-          res,
-          "Authentication required",
-          StatusCodes.UNAUTHORIZED,
-        );
-      const chunks = await chunkService.getChunksByBook(
-        req.params.bookId as string,
-        req.user.userId,
-      );
-      return ApiResponse.success(res, chunks, "Chunks retrieved successfully");
-    } catch (error) {
-      if (error instanceof AppError)
-        return ApiResponse.error(res, error.message, error.statusCode);
-      return ApiResponse.error(
-        res,
-        "Internal Server Error",
-        StatusCodes.INTERNAL_SERVER_ERROR,
-      );
-    }
-  },
+  getChunksByBook: catchAsync(async (req: Request, res: Response) => {
+    const chunks = await chunkService.getChunksByBook(
+      req.params.bookId as string,
+      req.user!.userId,
+    );
+    return ApiResponse.success(res, chunks, "Chunks retrieved successfully");
+  }),
 
-  async getChunksByPage(req: Request, res: Response, next: NextFunction) {
-    try {
-      if (!req.user)
-        return ApiResponse.error(
-          res,
-          "Authentication required",
-          StatusCodes.UNAUTHORIZED,
-        );
-      const pageNumber = parseInt(req.params.page as string, 10);
-      if (isNaN(pageNumber) || pageNumber < 1) {
-        return ApiResponse.error(
-          res,
-          "Invalid page number",
-          StatusCodes.BAD_REQUEST,
-        );
-      }
-      const chunks = await chunkService.getChunksByPage(
-        req.params.bookId as string,
-        pageNumber,
-        req.user.userId as string,
-      );
-      return ApiResponse.success(
-        res,
-        chunks,
-        "Page chunks retrieved successfully",
-      );
-    } catch (error) {
-      if (error instanceof AppError)
-        return ApiResponse.error(res, error.message, error.statusCode);
+  getChunksByPage: catchAsync(async (req: Request, res: Response) => {
+    const pageNumber = parseInt(req.params.page as string, 10);
+    if (isNaN(pageNumber) || pageNumber < 1) {
       return ApiResponse.error(
         res,
-        "Internal Server Error",
-        StatusCodes.INTERNAL_SERVER_ERROR,
+        "Invalid page number",
+        StatusCodes.BAD_REQUEST,
       );
     }
-  },
+    const chunks = await chunkService.getChunksByPage(
+      req.params.bookId as string,
+      pageNumber,
+      req.user!.userId,
+    );
+    return ApiResponse.success(
+      res,
+      chunks,
+      "Page chunks retrieved successfully",
+    );
+  }),
 };
