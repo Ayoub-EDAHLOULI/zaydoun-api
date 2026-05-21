@@ -8,7 +8,6 @@ if (!fs.existsSync(AUDIO_DIR)) fs.mkdirSync(AUDIO_DIR, { recursive: true });
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, AUDIO_DIR),
   filename: (_req, file, cb) => {
-    // Expo usually sends .m4a or .wav
     cb(null, `user-${Date.now()}${path.extname(file.originalname) || ".m4a"}`);
   },
 });
