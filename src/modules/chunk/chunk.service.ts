@@ -10,9 +10,9 @@ const toVector = (embedding: number[]) =>
 
 export const chunkService = {
   async createChunks(chunks: CreateChunkDto[]): Promise<void> {
-    for (const chunk of chunks) {
+    const queries = chunks.map((chunk) => {
       const vec = toVector(chunk.embedding);
-      await prisma.$executeRaw`
+      return prisma.$executeRaw`
         INSERT INTO chunks (id, book_id, page_number, chunk_index, content, token_count, embedding, created_at)
         VALUES (
           gen_random_uuid(),
@@ -29,7 +29,10 @@ export const chunkService = {
             token_count = EXCLUDED.token_count,
             embedding   = EXCLUDED.embedding
       `;
-    }
+    });
+
+    // Execute all queries in a single database transaction
+    await prisma.$transaction(queries);
   },
 
   async getChunksByBook(bookId: string, userId: string): Promise<ChunkData[]> {

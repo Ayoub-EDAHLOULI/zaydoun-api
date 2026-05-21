@@ -18,5 +18,10 @@ router.get(
   validate(chunkValidation.bookId),
   chunkController.getChunksByPage,
 );
+router.post(
+  "/search",
+  validate(chunkValidation.searchChunks),
+  chunkController.searchChunks,
+);
 
 export default router;

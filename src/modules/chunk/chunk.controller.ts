@@ -33,4 +33,18 @@ export const chunkController = {
       "Page chunks retrieved successfully",
     );
   }),
+
+  searchChunks: catchAsync(async (req: Request, res: Response) => {
+    const { query, pageNumber, topK } = req.body;
+    const dummyEmbedding = new Array(1536).fill(0.1);
+
+    const results = await chunkService.searchChunks(
+      req.params.bookId as string,
+      dummyEmbedding,
+      req.user!.userId,
+      pageNumber,
+      topK,
+    );
+    return ApiResponse.success(res, results, "Chunks searched successfully");
+  }),
 };
