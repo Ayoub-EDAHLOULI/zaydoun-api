@@ -15,7 +15,7 @@ async function main() {
   // 2. Create the Admin User (now with a password!)
   const adminUser = await prisma.user.upsert({
     where: { email: "ayoub@admin.com" },
-    update: {},
+    update: { password: hashedAdminPassword },
     create: {
       email: "ayoub@admin.com",
       name: "Ayoub Edahlouli",
@@ -25,15 +25,20 @@ async function main() {
 
   console.log(`👤 Admin user created: ${adminUser.name}`);
 
+  const SAMPLE_BOOK_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+
   // 2. Create a Sample Book for testing the Vector/RAG pipeline
-  const sampleBook = await prisma.book.create({
-    data: {
+  const sampleBook = await prisma.book.upsert({
+    where: { id: SAMPLE_BOOK_ID },
+    update: {},
+    create: {
+      id: SAMPLE_BOOK_ID,
       userId: adminUser.id,
       title: "حي بن يقظان (Hayy ibn Yaqdhan)",
       author: "Ibn Tufayl",
       language: "ar",
       totalPages: 120,
-      storagePath: "/uploads/books/hayy-ibn-yaqdhan.pdf", // Dummy path for now
+      storagePath: "/uploads/books/hayy-ibn-yaqdhan.pdf",
       status: "PENDING",
     },
   });

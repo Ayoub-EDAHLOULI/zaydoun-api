@@ -9,6 +9,7 @@ import userRouter from "./modules/user/user.routes";
 import bookRouter from "./modules/book/book.routes";
 import chunkRouter from "./modules/chunk/chunk.routes";
 import conversationRouter from "./modules/conversation/conversation.routes";
+import { errorMiddleware } from "./shared/middleware/error.middleware";
 
 const app = express();
 
@@ -78,5 +79,7 @@ app.use("/api/v1/books/:bookId/chunks", chunkRouter);
 app.use("/api/v1/conversations", conversationRouter);
 
 app.use(express.static("public"));
+
+app.use(errorMiddleware);
 
 export default app;

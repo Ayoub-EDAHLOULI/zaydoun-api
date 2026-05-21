@@ -27,17 +27,22 @@ export const chatService = {
     // ==========================================
     // 1. EARS: Whisper STT (Speech to Text)
     // ==========================================
+    const audioStats = await fs.promises.stat(audioFilePath);
+    // Approximate duration: ~16 kbps for typical compressed audio
+    const estimatedAudioSeconds = audioStats.size / (16_000 / 8);
+
     const transcription = await openai.audio.transcriptions.create({
       file: fs.createReadStream(audioFilePath),
       model: "whisper-1",
     });
     const userText = transcription.text;
 
-    // Save User Message to DB
+    // Save User Message — charge whisper cost to the user turn
     await conversationService.addMessage(conversationId, userId, {
       role: "user",
       content: userText,
-      audioPath: audioFilePath.replace(process.cwd() + "/public", ""), // save relative path
+      audioPath: audioFilePath.replace(process.cwd() + "/public", ""),
+      audioSeconds: estimatedAudioSeconds,
     });
 
     // ==========================================
@@ -80,13 +85,15 @@ export const chatService = {
 
     const aiText =
       llmResponse.choices[0].message.content || "I couldn't process that.";
+    const inputTokens = llmResponse.usage?.prompt_tokens ?? 0;
+    const outputTokens = llmResponse.usage?.completion_tokens ?? 0;
 
     // ==========================================
     // 4. MOUTH: TTS (Text to Speech)
     // ==========================================
     const ttsResponse = await openai.audio.speech.create({
       model: "tts-1",
-      voice: "onyx", // Onyx has a great deep, authoritative voice for Zaydoun
+      voice: "onyx",
       input: aiText,
     });
 
@@ -97,7 +104,7 @@ export const chatService = {
 
     const relativeAudioUrl = `/uploads/audio/${aiAudioFilename}`;
 
-    // Save AI Message to DB
+    // Save AI Message — charge LLM tokens + TTS chars to the assistant turn
     const aiMessage = await conversationService.addMessage(
       conversationId,
       userId,
@@ -105,6 +112,8 @@ export const chatService = {
         role: "assistant",
         content: aiText,
         audioPath: relativeAudioUrl,
+        inputTokens,
+        outputTokens,
       },
     );
 

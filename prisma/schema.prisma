@@ -125,7 +125,10 @@ model Message {
   role           MessageRole
   content        String
   sourcePage     Int?        @map("source_page")
-  audioPath      String?     @map("audio_path")  // TTS cache path in storage
+  audioPath      String?     @map("audio_path")
+  inputTokens    Int         @default(0) @map("input_tokens")
+  outputTokens   Int         @default(0) @map("output_tokens")
+  audioSeconds   Float       @default(0) @map("audio_seconds")
   createdAt      DateTime    @default(now()) @map("created_at")
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

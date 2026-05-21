@@ -9,6 +9,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get("/me", userController.getMe);
+router.get("/me/stats", userController.getStats);
 router.patch(
   "/me",
   validate(userValidation.updateUser),

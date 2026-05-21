@@ -42,4 +42,7 @@ export interface AddMessageDto {
   content: string;
   sourcePage?: number;
   audioPath?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  audioSeconds?: number;
 }

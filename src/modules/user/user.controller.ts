@@ -18,4 +18,16 @@ export const userController = {
     await userService.deleteUser(req.user!.userId);
     return ApiResponse.success(res, null, "Account deleted successfully");
   }),
+
+  getStats: catchAsync(async (req: Request, res: Response) => {
+    const period = (req.query.period as string) ?? "week";
+    if (!["day", "week", "month", "all"].includes(period)) {
+      return ApiResponse.error(res, "Invalid period. Use: day, week, month, all", 400);
+    }
+    const stats = await userService.getUsageStats(
+      req.user!.userId,
+      period as "day" | "week" | "month" | "all",
+    );
+    return ApiResponse.success(res, stats, "Usage stats retrieved successfully");
+  }),
 };

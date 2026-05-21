@@ -134,6 +134,9 @@ export const conversationService = {
         content: data.content,
         sourcePage: data.sourcePage,
         audioPath: data.audioPath,
+        inputTokens: data.inputTokens ?? 0,
+        outputTokens: data.outputTokens ?? 0,
+        audioSeconds: data.audioSeconds ?? 0,
       },
       select: messageSelect,
     });
