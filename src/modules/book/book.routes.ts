@@ -22,5 +22,10 @@ router.delete(
   validate(bookValidation.bookId),
   bookController.deleteBook,
 );
+router.post(
+  "/:id/process",
+  validate(bookValidation.bookId),
+  bookController.processBook,
+);
 
 export default router;

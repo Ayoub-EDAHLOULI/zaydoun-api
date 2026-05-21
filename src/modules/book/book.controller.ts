@@ -3,6 +3,7 @@ import { bookService } from "./book.service";
 import { ApiResponse } from "../../shared/utils/response";
 import { StatusCodes } from "../../shared/constants/status-codes";
 import { catchAsync } from "../../shared/utils/catchAsync";
+import { processorService } from "./processor.service";
 
 export const bookController = {
   listBooks: catchAsync(async (req: Request, res: Response) => {
@@ -36,6 +37,24 @@ export const bookController = {
       book,
       "Book uploaded successfully",
       StatusCodes.CREATED,
+    );
+  }),
+
+  processBook: catchAsync(async (req: Request, res: Response) => {
+    processorService
+      .processBook(req.params.id as string, req.user!.userId)
+      .catch((err) =>
+        console.error(
+          `[Background] Failed to process book ${req.params.id}:`,
+          err,
+        ),
+      );
+
+    return ApiResponse.success(
+      res,
+      null,
+      "Book processing started in the background. Check status later.",
+      StatusCodes.ACCEPTED,
     );
   }),
 
