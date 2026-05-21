@@ -12,6 +12,7 @@ import {
 } from "./auth.types";
 
 const REFRESH_TOKEN_TTL_DAYS = 7;
+const MAX_SESSIONS_PER_USER = 3;
 
 const refreshTokenExpiry = () =>
   new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
@@ -22,6 +23,29 @@ const userSelect = {
   email: true,
   createdAt: true,
 };
+
+// Enforces session cap: deletes oldest sessions beyond MAX_SESSIONS_PER_USER, then creates a new one
+async function createSession(userId: string, refreshToken: string) {
+  const sessions = await prisma.session.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+
+  if (sessions.length >= MAX_SESSIONS_PER_USER) {
+    const toDelete = sessions.slice(
+      0,
+      sessions.length - MAX_SESSIONS_PER_USER + 1,
+    );
+    await prisma.session.deleteMany({
+      where: { id: { in: toDelete.map((s) => s.id) } },
+    });
+  }
+
+  await prisma.session.create({
+    data: { userId, refreshToken, expiresAt: refreshTokenExpiry() },
+  });
+}
 
 export const authService = {
   async register(data: RegisterDto): Promise<AuthResponse> {
@@ -42,14 +66,7 @@ export const authService = {
       userId: user.id,
       email: user.email,
     });
-
-    await prisma.session.create({
-      data: {
-        userId: user.id,
-        refreshToken: tokens.refreshToken,
-        expiresAt: refreshTokenExpiry(),
-      },
-    });
+    await createSession(user.id, tokens.refreshToken);
 
     return { user, accessToken: tokens.accessToken };
   },
@@ -77,14 +94,7 @@ export const authService = {
       userId: user.id,
       email: user.email,
     });
-
-    await prisma.session.create({
-      data: {
-        userId: user.id,
-        refreshToken: tokens.refreshToken,
-        expiresAt: refreshTokenExpiry(),
-      },
-    });
+    await createSession(user.id, tokens.refreshToken);
 
     return {
       user: { id: user.id, name: user.name, email: user.email },
