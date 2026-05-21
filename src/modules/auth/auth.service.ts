@@ -121,6 +121,27 @@ export const authService = {
       );
     }
 
+    const isDev = process.env.NODE_ENV !== "production";
+
+    if (isDev) {
+      // In development all browsers share the same cookie jar on localhost.
+      // Rotating the refresh token here would invalidate every other open tab/browser.
+      // Issue a fresh accessToken while keeping the existing refresh token and session intact.
+      const accessToken = jwtUtils.generateAccessToken({
+        userId: session.user.id,
+        email: session.user.email,
+      });
+
+      // Slide the expiry so the session stays alive
+      await prisma.session.update({
+        where: { id: session.id },
+        data: { expiresAt: refreshTokenExpiry() },
+      });
+
+      return { accessToken, refreshToken };
+    }
+
+    // Production: full rotation — each device has its own cookie
     const tokens = jwtUtils.generateTokens({
       userId: session.user.id,
       email: session.user.email,
