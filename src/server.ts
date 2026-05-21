@@ -1,8 +1,5 @@
 import app from "./app";
-import dotenv from "dotenv";
 import { startSessionJanitor } from "./jobs/session.janitor";
-
-dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 
