@@ -5,8 +5,6 @@ import { AppError } from "../../shared/utils/errors";
 import { StatusCodes } from "../../shared/constants/status-codes";
 import { CreateBookDto, BookSummary, BookDetail } from "./book.types";
 
-const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads", "books");
-
 export const bookService = {
   async listBooks(userId: string): Promise<BookSummary[]> {
     return prisma.book.findMany({
@@ -68,13 +66,8 @@ export const bookService = {
     file: Express.Multer.File,
     data: CreateBookDto,
   ): Promise<BookSummary> {
-    await fs.mkdir(UPLOADS_DIR, { recursive: true });
-
-    const filename = `${Date.now()}-${file.originalname.replace(/\s+/g, "_")}`;
-    const filePath = path.join(UPLOADS_DIR, filename);
-    await fs.writeFile(filePath, file.buffer);
-
-    const storagePath = `/uploads/books/${filename}`;
+    // Multer already saved the file to disk! We just need the name it generated.
+    const storagePath = `/uploads/books/${file.filename}`;
 
     const book = await prisma.book.create({
       data: {
