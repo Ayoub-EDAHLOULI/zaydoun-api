@@ -8,7 +8,6 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("🌱 Starting the database seed...");
 
-  // 1. Create the Admin User
   const adminUser = await prisma.user.upsert({
     where: { email: "ayoub@admin.com" },
     update: {},
@@ -18,24 +17,25 @@ async function main() {
     },
   });
 
-  console.log(`👤 Admin user created: ${adminUser.name}`);
+  console.log(`👤 Admin user seeded: ${adminUser.name}`);
 
-  // 2. Create a Sample Book for testing the Vector/RAG pipeline
-  const sampleBook = await prisma.book.create({
-    data: {
+  const sampleBook = await prisma.book.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000001" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000001",
       userId: adminUser.id,
       title: "حي بن يقظان (Hayy ibn Yaqdhan)",
       author: "Ibn Tufayl",
       language: "ar",
       totalPages: 120,
-      storagePath: "/uploads/books/hayy-ibn-yaqdhan.pdf", // Dummy path for now
+      storagePath: "/uploads/books/hayy-ibn-yaqdhan.pdf",
       status: "PENDING",
     },
   });
 
   console.log(`📚 Sample book seeded: ${sampleBook.title}`);
-
-  console.log("✅ Seeding finished successfully. Zaydoun is ready to read.");
+  console.log("✅ Seeding finished. Zaydoun is ready to read.");
 }
 
 main()
