@@ -1,7 +1,5 @@
-import fs from "fs/promises";
 import path from "path";
-import * as pdfParseModule from "pdf-parse";
-const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
+import { PDFParse } from "pdf-parse";
 import OpenAI from "openai";
 import { prisma } from "../../lib/prisma";
 import { chunkService } from "../chunk/chunk.service";
@@ -38,36 +36,29 @@ export const processorService = {
     });
 
     try {
-      // 3. Read the physical PDF
+      // 3. Clear any chunks from previous (failed/partial) runs
+      await chunkService.deleteChunksByBook(bookId);
+
+      // 4. Parse PDF with per-page text using pdf-parse v2
       const filePath = path.join(process.cwd(), "public", book.storagePath);
-      const pdfBuffer = await fs.readFile(filePath);
+      const parser = new PDFParse({ url: filePath });
+      const pdfData = await parser.getText({ pageJoiner: "" });
+      await parser.destroy();
 
-      // 4. Custom render function to force a PAGE_BREAK delimiter
-      const renderPage = async (pageData: any) => {
-        const textContent = await pageData.getTextContent();
-        const text = textContent.items.map((item: any) => item.str).join(" ");
-        return text + "\n---PAGE_BREAK---\n";
-      };
-
-      const pdfData = await pdfParse(pdfBuffer, { pagerender: renderPage });
-      const rawPages = pdfData.text.split("\n---PAGE_BREAK---\n");
-      if (rawPages[rawPages.length - 1].trim() === "") rawPages.pop(); // Remove trailing empty page
-
-      // 5. Prepare text chunks
+      // 5. Prepare text chunks from per-page results
       const allTextChunks: {
         pageNumber: number;
         chunkIndex: number;
         content: string;
       }[] = [];
 
-      for (let i = 0; i < rawPages.length; i++) {
-        const pageNumber = i + 1;
-        const pageText = rawPages[i].trim();
+      for (const page of pdfData.pages) {
+        const pageText = page.text.trim();
         if (!pageText) continue;
 
         const chunks = splitIntoChunks(pageText);
         chunks.forEach((content, chunkIndex) => {
-          allTextChunks.push({ pageNumber, chunkIndex, content });
+          allTextChunks.push({ pageNumber: page.num, chunkIndex, content });
         });
       }
 
@@ -102,10 +93,10 @@ export const processorService = {
       await chunkService.createChunks(dbChunks);
       await prisma.book.update({
         where: { id: bookId },
-        data: { status: "READY", totalPages: rawPages.length },
+        data: { status: "READY", totalPages: pdfData.total },
       });
     } catch (error) {
-      // If anything fails, mark as FAILED so the user can try again
+      console.error("[processor] processBook failed:", error);
       await prisma.book.update({
         where: { id: bookId },
         data: { status: "FAILED" },
