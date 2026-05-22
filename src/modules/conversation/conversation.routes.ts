@@ -2,6 +2,7 @@ import { Router } from "express";
 import { conversationController } from "./conversation.controller";
 import { validate } from "../../shared/middleware/validation.middleware";
 import { authenticate } from "../../shared/middleware/auth.middleware";
+import { enforceMessagesLimit } from "../../shared/middleware/tier-limits.middleware";
 import { conversationValidation } from "./conversation.validation";
 import { audioUpload } from "../../shared/utils/audio-multer";
 
@@ -22,11 +23,13 @@ router.get(
 );
 router.post(
   "/:id/talk",
+  enforceMessagesLimit,
   audioUpload.single("audio"),
   conversationController.talkToZaydoun,
 );
 router.post(
   "/:id/chat",
+  enforceMessagesLimit,
   validate(conversationValidation.chatMessage),
   conversationController.chatWithZaydoun,
 );

@@ -3,6 +3,7 @@ import { jwtUtils } from "../../shared/utils/jwt";
 import { passwordUtils } from "../../shared/utils/password";
 import { AppError } from "../../shared/utils/errors";
 import { StatusCodes } from "../../shared/constants/status-codes";
+import { emailService } from "../../services/email/email.service";
 import {
   RegisterDto,
   LoginDto,
@@ -69,6 +70,9 @@ export const authService = {
       role: user.role,
     });
     await createSession(user.id, tokens.refreshToken);
+
+    // Fire-and-forget — don't let email failure block registration
+    void emailService.sendWelcomeEmail(user.email, user.name ?? user.email);
 
     return {
       user,
