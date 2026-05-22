@@ -3,6 +3,7 @@ export interface UserProfile {
   name: string | null;
   email: string;
   role: "USER" | "ADMIN";
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -12,8 +13,16 @@ export interface AdminUserRow {
   name: string | null;
   email: string;
   role: "USER" | "ADMIN";
+  isActive: boolean;
   createdAt: Date;
   stats: UserStats;
+}
+
+export interface CreateAdminUserDto {
+  name?: string;
+  email: string;
+  password: string;
+  role: "USER" | "ADMIN";
 }
 
 export interface UserStats {

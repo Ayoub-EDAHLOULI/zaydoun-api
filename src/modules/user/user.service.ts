@@ -8,7 +8,9 @@ import {
   UsageStats,
   DailyUsage,
   ConversationUsage,
+  CreateAdminUserDto,
 } from "./user.types";
+import { passwordUtils } from "../../shared/utils/password";
 
 // Prices from env with GPT-4o-mini defaults
 const PRICE_INPUT_PER_1M = parseFloat(process.env.PRICE_INPUT_PER_1M ?? "0.15");
@@ -63,6 +65,7 @@ export const userService = {
         name: true,
         email: true,
         role: true,
+        isActive: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -122,6 +125,7 @@ export const userService = {
         name: true,
         email: true,
         role: true,
+        isActive: true,
         createdAt: true,
         _count: { select: { books: true, conversations: true } },
       },
@@ -137,6 +141,42 @@ export const userService = {
     }));
   },
 
+  async createAdminUser(data: CreateAdminUserDto): Promise<AdminUserRow> {
+    const existing = await prisma.user.findUnique({
+      where: { email: data.email },
+    });
+    if (existing)
+      throw new AppError("Email already in use", StatusCodes.CONFLICT);
+
+    const hashedPassword = await passwordUtils.hash(data.password);
+    const user = await prisma.user.create({
+      data: {
+        email: data.email,
+        name: data.name ?? null,
+        password: hashedPassword,
+        role: data.role,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        _count: { select: { books: true, conversations: true } },
+      },
+    });
+
+    const { _count, ...rest } = user;
+    return {
+      ...rest,
+      stats: {
+        totalBooks: _count.books,
+        totalConversations: _count.conversations,
+      },
+    };
+  },
+
   async updateUserRole(
     targetId: string,
     role: "USER" | "ADMIN",
@@ -144,6 +184,39 @@ export const userService = {
     const user = await prisma.user.findUnique({ where: { id: targetId } });
     if (!user) throw new AppError("User not found", StatusCodes.NOT_FOUND);
     await prisma.user.update({ where: { id: targetId }, data: { role } });
+  },
+
+  async updateAdminUser(
+    targetId: string,
+    data: { name?: string; email?: string },
+  ): Promise<void> {
+    const user = await prisma.user.findUnique({ where: { id: targetId } });
+    if (!user) throw new AppError("User not found", StatusCodes.NOT_FOUND);
+    if (data.email && data.email !== user.email) {
+      const conflict = await prisma.user.findUnique({
+        where: { email: data.email },
+      });
+      if (conflict)
+        throw new AppError("Email already in use", StatusCodes.CONFLICT);
+    }
+    await prisma.user.update({
+      where: { id: targetId },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.email && { email: data.email }),
+      },
+    });
+  },
+
+  async toggleUserActive(targetId: string): Promise<boolean> {
+    const user = await prisma.user.findUnique({ where: { id: targetId } });
+    if (!user) throw new AppError("User not found", StatusCodes.NOT_FOUND);
+    const updated = await prisma.user.update({
+      where: { id: targetId },
+      data: { isActive: !user.isActive },
+      select: { isActive: true },
+    });
+    return updated.isActive;
   },
 
   async adminDeleteUser(targetId: string): Promise<void> {

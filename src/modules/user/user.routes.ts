@@ -23,7 +23,10 @@ router.delete("/me", userController.deleteMe);
 
 // ── Admin routes ───────────────────────────────────────────────────────────
 router.get("/", requireRole("ADMIN"), userController.listUsers);
+router.post("/", requireRole("ADMIN"), userController.createUser);
+router.patch("/:id", requireRole("ADMIN"), userController.updateUser);
 router.patch("/:id/role", requireRole("ADMIN"), userController.updateRole);
+router.patch("/:id/active", requireRole("ADMIN"), userController.toggleActive);
 router.delete("/:id", requireRole("ADMIN"), userController.adminDeleteUser);
 
 export default router;

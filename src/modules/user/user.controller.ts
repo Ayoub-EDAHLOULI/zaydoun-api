@@ -48,12 +48,36 @@ export const userController = {
     return ApiResponse.success(res, users, "Users retrieved successfully");
   }),
 
+  createUser: catchAsync(async (req: Request, res: Response) => {
+    const { name, email, password, role } = req.body;
+    if (!email || !password)
+      throw new AppError(
+        "email and password are required",
+        StatusCodes.BAD_REQUEST,
+      );
+    if (role && role !== "USER" && role !== "ADMIN")
+      throw new AppError("role must be USER or ADMIN", StatusCodes.BAD_REQUEST);
+
+    const user = await userService.createAdminUser({
+      name,
+      email,
+      password,
+      role: role ?? "USER",
+    });
+    return ApiResponse.success(res, user, "User created successfully");
+  }),
+
+  updateUser: catchAsync(async (req: Request, res: Response) => {
+    const { name, email } = req.body;
+    await userService.updateAdminUser(req.params.id as string, { name, email });
+    return ApiResponse.success(res, null, "User updated successfully");
+  }),
+
   updateRole: catchAsync(async (req: Request, res: Response) => {
     const { role } = req.body;
     if (role !== "USER" && role !== "ADMIN")
       throw new AppError("role must be USER or ADMIN", StatusCodes.BAD_REQUEST);
 
-    // Prevent admin from demoting themselves
     if (req.params.id === req.user!.userId && role === "USER")
       throw new AppError(
         "Cannot demote your own account",
@@ -62,6 +86,23 @@ export const userController = {
 
     await userService.updateUserRole(req.params.id as string, role);
     return ApiResponse.success(res, null, "Role updated successfully");
+  }),
+
+  toggleActive: catchAsync(async (req: Request, res: Response) => {
+    if (req.params.id === req.user!.userId)
+      throw new AppError(
+        "Cannot deactivate your own account",
+        StatusCodes.BAD_REQUEST,
+      );
+
+    const isActive = await userService.toggleUserActive(
+      req.params.id as string,
+    );
+    return ApiResponse.success(
+      res,
+      { isActive },
+      isActive ? "User activated" : "User deactivated",
+    );
   }),
 
   adminDeleteUser: catchAsync(async (req: Request, res: Response) => {
