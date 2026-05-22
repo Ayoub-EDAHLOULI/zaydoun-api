@@ -5,6 +5,7 @@ import { StatusCodes } from "../../shared/constants/status-codes";
 import { catchAsync } from "../../shared/utils/catchAsync";
 import { chatService } from "../chat/chat.service";
 import { AppError } from "../../shared/utils/errors";
+import { fileUtils } from "../../shared/utils/file.util";
 
 export const conversationController = {
   listConversations: catchAsync(async (req: Request, res: Response) => {
@@ -70,7 +71,11 @@ export const conversationController = {
       req.body.languageCode as string | undefined,
     );
 
-    return ApiResponse.success(res, result, "Zaydoun responded");
+    const { _aiAudioPath, ...payload } = result;
+    ApiResponse.success(res, payload, "Zaydoun responded");
+
+    // Delete AI audio from disk after response is flushed — client has the URL
+    await fileUtils.safeDelete(_aiAudioPath);
   }),
 
   chatWithZaydoun: catchAsync(async (req: Request, res: Response) => {

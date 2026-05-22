@@ -6,6 +6,7 @@ import { chunkService } from "../chunk/chunk.service";
 import { conversationService } from "../conversation/conversation.service";
 import { AppError } from "../../shared/utils/errors";
 import { StatusCodes } from "../../shared/constants/status-codes";
+import { fileUtils } from "../../shared/utils/file.util";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const AUDIO_DIR = path.join(process.cwd(), "public", "uploads", "audio");
@@ -125,6 +126,9 @@ ${contextText}`;
     });
     const userText = transcription.text;
 
+    // User upload no longer needed — delete after transcription
+    await fileUtils.safeDelete(audioFilePath);
+
     // Save User Message — charge whisper cost to the user turn
     await conversationService.addMessage(conversationId, userId, {
       role: "user",
@@ -212,7 +216,8 @@ ${contextText}`;
     return {
       userText,
       aiMessage,
-      audioUrl: relativeAudioUrl, // Expo will play this URL!
+      audioUrl: relativeAudioUrl,
+      _aiAudioPath: aiAudioPath, // absolute path — caller deletes after response is sent
     };
   },
 };
