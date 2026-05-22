@@ -2,8 +2,18 @@ export interface UserProfile {
   id: string;
   name: string | null;
   email: string;
+  role: "USER" | "ADMIN";
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface AdminUserRow {
+  id: string;
+  name: string | null;
+  email: string;
+  role: "USER" | "ADMIN";
+  createdAt: Date;
+  stats: UserStats;
 }
 
 export interface UserStats {
@@ -21,11 +31,11 @@ export interface UpdateUserDto {
 }
 
 export interface DailyUsage {
-  date: string;         // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   inputTokens: number;
   outputTokens: number;
   audioSeconds: number;
-  cost: number;         // USD
+  cost: number; // USD
   messages: number;
 }
 
@@ -52,6 +62,6 @@ export interface UsageStats {
   dailyBreakdown: DailyUsage[];
   topConversations: ConversationUsage[];
   // Compared to previous period
-  costDelta: number | null;        // % change vs previous period
+  costDelta: number | null; // % change vs previous period
   messagesDelta: number | null;
 }
