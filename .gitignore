@@ -29,3 +29,6 @@ build/
 .dockerignore
 Dockerfile
 docker-compose.yml
+
+# Public
+/public/uploads
