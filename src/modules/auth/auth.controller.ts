@@ -91,4 +91,19 @@ export const authController = {
     await authService.changePassword(req.user!.userId, req.body);
     return ApiResponse.success(res, null, "Password changed successfully");
   }),
+
+  forgotPassword: catchAsync(async (req: Request, res: Response) => {
+    await authService.forgotPassword(req.body);
+    // Always 200 — never reveal whether the email exists
+    return ApiResponse.success(
+      res,
+      null,
+      "If that email is registered you will receive a reset link shortly",
+    );
+  }),
+
+  resetPassword: catchAsync(async (req: Request, res: Response) => {
+    await authService.resetPassword(req.body);
+    return ApiResponse.success(res, null, "Password reset successfully");
+  }),
 };

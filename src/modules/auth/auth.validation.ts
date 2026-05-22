@@ -46,4 +46,17 @@ export const authValidation = {
         .optional(),
     }),
   }),
+
+  forgotPassword: z.object({
+    body: z.object({
+      email: z.email("Invalid email format").toLowerCase().trim(),
+    }),
+  }),
+
+  resetPassword: z.object({
+    body: z.object({
+      token: z.string().min(1, "Token is required"),
+      newPassword: passwordSchema,
+    }),
+  }),
 };

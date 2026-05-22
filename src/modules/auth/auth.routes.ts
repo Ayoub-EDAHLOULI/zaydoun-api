@@ -14,6 +14,16 @@ router.post(
 router.post("/login", validate(authValidation.login), authController.login);
 router.post("/refresh-token", authController.refreshToken);
 router.post("/logout", authController.logout);
+router.post(
+  "/forgot-password",
+  validate(authValidation.forgotPassword),
+  authController.forgotPassword,
+);
+router.post(
+  "/reset-password",
+  validate(authValidation.resetPassword),
+  authController.resetPassword,
+);
 
 router.get("/profile", authenticate, authController.getProfile);
 router.patch(

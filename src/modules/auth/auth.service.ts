@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { prisma } from "../../lib/prisma";
 import { jwtUtils } from "../../shared/utils/jwt";
 import { passwordUtils } from "../../shared/utils/password";
@@ -10,7 +11,11 @@ import {
   AuthResponse,
   UpdateProfileDto,
   ChangePasswordDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
 } from "./auth.types";
+
+const RESET_TOKEN_TTL_MINUTES = 60;
 
 const REFRESH_TOKEN_TTL_DAYS = 7;
 const MAX_SESSIONS_PER_USER = 3;
@@ -219,5 +224,67 @@ export const authService = {
       where: { id: userId },
       data: { password: hashed },
     });
+  },
+
+  async forgotPassword(data: ForgotPasswordDto): Promise<void> {
+    const user = await prisma.user.findUnique({ where: { email: data.email } });
+
+    // Always return success — never reveal whether the email exists
+    if (!user) return;
+
+    // Invalidate any previous unused tokens for this user
+    await prisma.passwordResetToken.deleteMany({
+      where: { userId: user.id, usedAt: null },
+    });
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000),
+      },
+    });
+
+    void emailService.sendPasswordResetEmail(user.email, rawToken);
+  },
+
+  async resetPassword(data: ResetPasswordDto): Promise<void> {
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(data.token)
+      .digest("hex");
+
+    const record = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { user: { select: { id: true } } },
+    });
+
+    if (!record || record.usedAt || record.expiresAt < new Date()) {
+      throw new AppError(
+        "Reset link is invalid or has expired",
+        StatusCodes.BAD_REQUEST,
+      );
+    }
+
+    const hashed = await passwordUtils.hash(data.newPassword);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: record.userId },
+        data: { password: hashed },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: record.id },
+        data: { usedAt: new Date() },
+      }),
+      // Revoke all active sessions — force re-login on all devices
+      prisma.session.deleteMany({ where: { userId: record.userId } }),
+    ]);
   },
 };
