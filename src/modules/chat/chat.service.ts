@@ -15,6 +15,7 @@ export const chatService = {
     conversationId: string,
     userId: string,
     userText: string,
+    languageCode?: string,
   ) {
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
@@ -57,9 +58,13 @@ export const chatService = {
       content: m.content,
     }));
 
+    const langInstruction = languageCode
+      ? `You MUST respond exclusively in the language with ISO code "${languageCode}". Do not switch languages under any circumstances.`
+      : `Respond in the language the user speaks to you.`;
+
     const systemPrompt = `You are Zaydoun, a highly intelligent Moroccan AI assistant discussing a book.
 Use the following book excerpts to answer the user. Speak naturally and concisely.
-Respond in the language the user speaks to you (Arabic/Darija/French/English/Spanish/Chinese/Japanese).
+${langInstruction}
 
 BOOK EXCERPTS:
 ${contextText}`;
@@ -96,6 +101,7 @@ ${contextText}`;
     conversationId: string,
     userId: string,
     audioFilePath: string,
+    languageCode?: string,
   ) {
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
@@ -149,12 +155,16 @@ ${contextText}`;
     // ==========================================
     // 3. BRAIN: GPT-4o-mini (RAG)
     // ==========================================
-    const systemPrompt = `You are Zaydoun, a highly intelligent Moroccan AI assistant discussing a book. 
-    Use the following book excerpts to answer the user. Speak naturally and concisely.
-    Respond in the language the user speaks to you (Arabic/Darija/French/English/Spanish/Chinese/Japanese).
-    
-    BOOK EXCERPTS:
-    ${contextText}`;
+    const langInstruction = languageCode
+      ? `You MUST respond exclusively in the language with ISO code "${languageCode}". Do not switch languages under any circumstances.`
+      : `Respond in the language the user speaks to you.`;
+
+    const systemPrompt = `You are Zaydoun, a highly intelligent Moroccan AI assistant discussing a book.
+Use the following book excerpts to answer the user. Speak naturally and concisely.
+${langInstruction}
+
+BOOK EXCERPTS:
+${contextText}`;
 
     const llmResponse = await openai.chat.completions.create({
       model: "gpt-4o-mini",

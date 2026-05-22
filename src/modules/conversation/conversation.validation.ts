@@ -32,6 +32,7 @@ export const conversationValidation = {
     }),
     body: z.object({
       message: z.string().min(1, "Message is required").max(2000),
+      languageCode: z.string().length(2).toLowerCase().optional(),
     }),
   }),
 };

@@ -99,15 +99,15 @@ export const chunkService = {
     if (pageNumber != null) {
       return prisma.$queryRaw<ChunkSearchResult[]>`
         SELECT id,
-               book_id      AS "bookId",
-               page_number  AS "pageNumber",
-               chunk_index  AS "chunkIndex",
+               book_id::text AS "bookId",
+               page_number   AS "pageNumber",
+               chunk_index   AS "chunkIndex",
                content,
                1 - (embedding <=> ${vec}) AS similarity
         FROM   chunks
-        WHERE  book_id    = ${bookId}::uuid
-          AND  page_number = ${pageNumber}
-          AND  embedding  IS NOT NULL
+        WHERE  book_id::text = ${bookId}
+          AND  page_number   = ${pageNumber}
+          AND  embedding    IS NOT NULL
         ORDER BY embedding <=> ${vec}
         LIMIT  ${topK}
       `;
@@ -115,14 +115,14 @@ export const chunkService = {
 
     return prisma.$queryRaw<ChunkSearchResult[]>`
       SELECT id,
-             book_id     AS "bookId",
-             page_number AS "pageNumber",
-             chunk_index AS "chunkIndex",
+             book_id::text AS "bookId",
+             page_number   AS "pageNumber",
+             chunk_index   AS "chunkIndex",
              content,
              1 - (embedding <=> ${vec}) AS similarity
       FROM   chunks
-      WHERE  book_id   = ${bookId}::uuid
-        AND  embedding IS NOT NULL
+      WHERE  book_id::text = ${bookId}
+        AND  embedding    IS NOT NULL
       ORDER BY embedding <=> ${vec}
       LIMIT  ${topK}
     `;

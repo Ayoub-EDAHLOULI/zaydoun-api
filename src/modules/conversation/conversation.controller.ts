@@ -67,13 +67,14 @@ export const conversationController = {
       req.params.id as string,
       req.user!.userId,
       req.file.path,
+      req.body.languageCode as string | undefined,
     );
 
     return ApiResponse.success(res, result, "Zaydoun responded");
   }),
 
   chatWithZaydoun: catchAsync(async (req: Request, res: Response) => {
-    const { message } = req.body;
+    const { message, languageCode } = req.body;
     if (!message || typeof message !== "string" || !message.trim())
       throw new AppError("message is required", StatusCodes.BAD_REQUEST);
 
@@ -81,6 +82,7 @@ export const conversationController = {
       req.params.id as string,
       req.user!.userId,
       message.trim(),
+      languageCode as string | undefined,
     );
 
     return ApiResponse.success(res, result, "Zaydoun responded");
