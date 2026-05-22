@@ -11,6 +11,87 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const AUDIO_DIR = path.join(process.cwd(), "public", "uploads", "audio");
 
 export const chatService = {
+  async processTextMessage(
+    conversationId: string,
+    userId: string,
+    userText: string,
+  ) {
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: { messages: { take: 10, orderBy: { createdAt: "desc" } } },
+    });
+
+    if (!conversation)
+      throw new AppError("Conversation not found", StatusCodes.NOT_FOUND);
+    if (conversation.userId !== userId)
+      throw new AppError("Conversation not found", StatusCodes.NOT_FOUND);
+
+    // Save user message
+    await conversationService.addMessage(conversationId, userId, {
+      role: "user",
+      content: userText,
+    });
+
+    // Embed & search pgvector
+    const embedRes = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: userText,
+    });
+
+    const relevantChunks = await chunkService.searchChunks(
+      conversation.bookId,
+      embedRes.data[0].embedding,
+      userId,
+      undefined,
+      5,
+    );
+
+    const contextText = relevantChunks
+      .map((c) => `[Page ${c.pageNumber}]: ${c.content}`)
+      .join("\n\n");
+
+    // Build conversation history for context (most recent first → reverse)
+    const history = [...conversation.messages].reverse();
+    const chatHistory = history.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
+
+    const systemPrompt = `You are Zaydoun, a highly intelligent Moroccan AI assistant discussing a book.
+Use the following book excerpts to answer the user. Speak naturally and concisely.
+Respond in the language the user speaks to you (Arabic/Darija/French/English/Spanish/Chinese/Japanese).
+
+BOOK EXCERPTS:
+${contextText}`;
+
+    const llmResponse = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...chatHistory,
+        { role: "user", content: userText },
+      ],
+    });
+
+    const aiText =
+      llmResponse.choices[0].message.content || "I couldn't process that.";
+    const inputTokens = llmResponse.usage?.prompt_tokens ?? 0;
+    const outputTokens = llmResponse.usage?.completion_tokens ?? 0;
+
+    const aiMessage = await conversationService.addMessage(
+      conversationId,
+      userId,
+      {
+        role: "assistant",
+        content: aiText,
+        inputTokens,
+        outputTokens,
+      },
+    );
+
+    return { userText, aiMessage };
+  },
+
   async processVoiceMessage(
     conversationId: string,
     userId: string,

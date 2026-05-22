@@ -25,4 +25,13 @@ export const conversationValidation = {
       audioPath: z.string().optional(),
     }),
   }),
+
+  chatMessage: z.object({
+    params: z.object({
+      id: z.uuid("Invalid conversation ID"),
+    }),
+    body: z.object({
+      message: z.string().min(1, "Message is required").max(2000),
+    }),
+  }),
 };

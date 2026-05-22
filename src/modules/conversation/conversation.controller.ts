@@ -72,6 +72,20 @@ export const conversationController = {
     return ApiResponse.success(res, result, "Zaydoun responded");
   }),
 
+  chatWithZaydoun: catchAsync(async (req: Request, res: Response) => {
+    const { message } = req.body;
+    if (!message || typeof message !== "string" || !message.trim())
+      throw new AppError("message is required", StatusCodes.BAD_REQUEST);
+
+    const result = await chatService.processTextMessage(
+      req.params.id as string,
+      req.user!.userId,
+      message.trim(),
+    );
+
+    return ApiResponse.success(res, result, "Zaydoun responded");
+  }),
+
   deleteConversation: catchAsync(async (req: Request, res: Response) => {
     await conversationService.deleteConversation(
       req.params.id as string,

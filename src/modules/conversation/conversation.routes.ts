@@ -22,8 +22,13 @@ router.get(
 );
 router.post(
   "/:id/talk",
-  audioUpload.single("audio"), // The Multer middleware
+  audioUpload.single("audio"),
   conversationController.talkToZaydoun,
+);
+router.post(
+  "/:id/chat",
+  validate(conversationValidation.chatMessage),
+  conversationController.chatWithZaydoun,
 );
 router.post(
   "/:id/messages",
