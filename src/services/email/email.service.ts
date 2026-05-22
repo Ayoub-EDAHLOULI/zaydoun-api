@@ -130,6 +130,27 @@ class EmailService {
     });
   }
 
+  // ── Admin-created account ─────────────────────────────────────────────────
+
+  async sendAdminCreatedAccount(
+    email: string,
+    name: string,
+    tempPassword: string,
+  ): Promise<boolean> {
+    return this.send({
+      to: { email, name },
+      subject: "Your Zaydoun account is ready",
+      template: "admin-created-account",
+      context: {
+        NAME: name.split(" ")[0],
+        EMAIL: email,
+        TEMP_PASSWORD: tempPassword,
+        APP_URL: process.env.FRONTEND_URL || "https://zaydoun.ai",
+        YEAR: new Date().getFullYear(),
+      },
+    });
+  }
+
   // ── Contact / support message (admin notification) ────────────────────────
 
   async sendContactFormEmail(data: {

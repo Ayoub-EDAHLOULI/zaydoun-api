@@ -49,19 +49,15 @@ export const userController = {
   }),
 
   createUser: catchAsync(async (req: Request, res: Response) => {
-    const { name, email, password, role } = req.body;
-    if (!email || !password)
-      throw new AppError(
-        "email and password are required",
-        StatusCodes.BAD_REQUEST,
-      );
+    const { name, email, role } = req.body;
+    if (!email)
+      throw new AppError("email is required", StatusCodes.BAD_REQUEST);
     if (role && role !== "USER" && role !== "ADMIN")
       throw new AppError("role must be USER or ADMIN", StatusCodes.BAD_REQUEST);
 
     const user = await userService.createAdminUser({
       name,
       email,
-      password,
       role: role ?? "USER",
     });
     return ApiResponse.success(res, user, "User created successfully");

@@ -21,7 +21,6 @@ export interface AdminUserRow {
 export interface CreateAdminUserDto {
   name?: string;
   email: string;
-  password: string;
   role: "USER" | "ADMIN";
 }
 

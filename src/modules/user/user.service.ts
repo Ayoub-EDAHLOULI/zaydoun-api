@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../shared/utils/errors";
 import { StatusCodes } from "../../shared/constants/status-codes";
+import crypto from "crypto";
 import {
   UpdateUserDto,
   UserWithStats,
@@ -11,6 +12,7 @@ import {
   CreateAdminUserDto,
 } from "./user.types";
 import { passwordUtils } from "../../shared/utils/password";
+import { emailService } from "../../services/email/email.service";
 
 // Prices from env with GPT-4o-mini defaults
 const PRICE_INPUT_PER_1M = parseFloat(process.env.PRICE_INPUT_PER_1M ?? "0.15");
@@ -148,7 +150,9 @@ export const userService = {
     if (existing)
       throw new AppError("Email already in use", StatusCodes.CONFLICT);
 
-    const hashedPassword = await passwordUtils.hash(data.password);
+    // Generate a secure temporary password — sent to the user via email
+    const tempPassword = crypto.randomBytes(10).toString("base64url");
+    const hashedPassword = await passwordUtils.hash(tempPassword);
     const user = await prisma.user.create({
       data: {
         email: data.email,
@@ -168,6 +172,13 @@ export const userService = {
     });
 
     const { _count, ...rest } = user;
+
+    void emailService.sendAdminCreatedAccount(
+      rest.email,
+      rest.name ?? rest.email,
+      tempPassword,
+    );
+
     return {
       ...rest,
       stats: {
