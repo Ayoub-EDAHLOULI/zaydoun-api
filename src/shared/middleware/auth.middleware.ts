@@ -14,7 +14,7 @@ declare global {
 
 export const authenticate = async (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction,
 ) => {
   try {
@@ -32,14 +32,14 @@ export const authenticate = async (
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, email: true },
+      select: { id: true, email: true, role: true },
     });
 
     if (!user) {
       throw new AppError("User no longer exists", StatusCodes.UNAUTHORIZED);
     }
 
-    req.user = { userId: user.id, email: user.email };
+    req.user = { userId: user.id, email: user.email, role: user.role };
 
     next();
   } catch (error) {
@@ -49,3 +49,14 @@ export const authenticate = async (
     );
   }
 };
+
+// Route-level role guard — use after `authenticate`
+// e.g. router.get("/admin/stats", authenticate, requireRole("ADMIN"), handler)
+export const requireRole =
+  (...roles: Array<"USER" | "ADMIN">) =>
+  (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return next(new AppError("Forbidden", StatusCodes.FORBIDDEN));
+    }
+    next();
+  };

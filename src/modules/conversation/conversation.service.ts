@@ -53,10 +53,9 @@ export const conversationService = {
     userId: string,
   ): Promise<ConversationDetail> {
     const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
+      where: { id: conversationId, userId },
       select: {
         id: true,
-        userId: true,
         bookId: true,
         title: true,
         languageCode: true,
@@ -71,11 +70,8 @@ export const conversationService = {
 
     if (!conversation)
       throw new AppError("Conversation not found", StatusCodes.NOT_FOUND);
-    if (conversation.userId !== userId)
-      throw new AppError("Conversation not found", StatusCodes.NOT_FOUND);
 
-    const { userId: _uid, ...rest } = conversation;
-    return rest;
+    return conversation;
   },
 
   async createConversation(
@@ -118,13 +114,12 @@ export const conversationService = {
     userId: string,
     data: AddMessageDto,
   ): Promise<MessageData> {
+    // Single atomic query — ownership verified at DB level, no TOCTOU gap
     const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
+      where: { id: conversationId, userId },
     });
 
     if (!conversation)
-      throw new AppError("Conversation not found", StatusCodes.NOT_FOUND);
-    if (conversation.userId !== userId)
       throw new AppError("Conversation not found", StatusCodes.NOT_FOUND);
 
     const message = await prisma.message.create({
@@ -157,15 +152,11 @@ export const conversationService = {
     conversationId: string,
     userId: string,
   ): Promise<void> {
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
+    const deleted = await prisma.conversation.deleteMany({
+      where: { id: conversationId, userId },
     });
 
-    if (!conversation)
+    if (deleted.count === 0)
       throw new AppError("Conversation not found", StatusCodes.NOT_FOUND);
-    if (conversation.userId !== userId)
-      throw new AppError("Conversation not found", StatusCodes.NOT_FOUND);
-
-    await prisma.conversation.delete({ where: { id: conversationId } });
   },
 };

@@ -31,14 +31,12 @@ export const chunkService = {
       `;
     });
 
-    // Execute all queries in a single database transaction
     await prisma.$transaction(queries);
   },
 
   async getChunksByBook(bookId: string, userId: string): Promise<ChunkData[]> {
     const book = await prisma.book.findUnique({ where: { id: bookId } });
-    if (!book) throw new AppError("Book not found", StatusCodes.NOT_FOUND);
-    if (book.userId !== userId)
+    if (!book || book.userId !== userId)
       throw new AppError("Book not found", StatusCodes.NOT_FOUND);
 
     return prisma.chunk.findMany({
@@ -62,8 +60,7 @@ export const chunkService = {
     userId: string,
   ): Promise<ChunkData[]> {
     const book = await prisma.book.findUnique({ where: { id: bookId } });
-    if (!book) throw new AppError("Book not found", StatusCodes.NOT_FOUND);
-    if (book.userId !== userId)
+    if (!book || book.userId !== userId)
       throw new AppError("Book not found", StatusCodes.NOT_FOUND);
 
     return prisma.chunk.findMany({
@@ -81,7 +78,8 @@ export const chunkService = {
     });
   },
 
-  // Strict page-level RAG: hard metadata pre-filter (book + page) THEN cosine similarity
+  // Multi-tenant vector search: JOIN enforces ownership at the DB level so one
+  // user's query can never surface chunks from another user's private library.
   async searchChunks(
     bookId: string,
     queryEmbedding: number[],
@@ -89,43 +87,52 @@ export const chunkService = {
     pageNumber?: number,
     topK: number = 5,
   ): Promise<ChunkSearchResult[]> {
-    const book = await prisma.book.findUnique({ where: { id: bookId } });
-    if (!book) throw new AppError("Book not found", StatusCodes.NOT_FOUND);
-    if (book.userId !== userId)
-      throw new AppError("Book not found", StatusCodes.NOT_FOUND);
-
     const vec = toVector(queryEmbedding);
 
     if (pageNumber != null) {
-      return prisma.$queryRaw<ChunkSearchResult[]>`
-        SELECT id,
-               book_id::text AS "bookId",
-               page_number   AS "pageNumber",
-               chunk_index   AS "chunkIndex",
-               content,
-               1 - (embedding <=> ${vec}) AS similarity
-        FROM   chunks
-        WHERE  book_id::text = ${bookId}
-          AND  page_number   = ${pageNumber}
-          AND  embedding    IS NOT NULL
-        ORDER BY embedding <=> ${vec}
+      const rows = await prisma.$queryRaw<ChunkSearchResult[]>`
+        SELECT c.id,
+               c.book_id::text            AS "bookId",
+               c.page_number              AS "pageNumber",
+               c.chunk_index              AS "chunkIndex",
+               c.content,
+               1 - (c.embedding <=> ${vec}) AS similarity
+        FROM   chunks c
+        JOIN   books  b ON c.book_id = b.id
+        WHERE  b.id      = ${bookId}::uuid
+          AND  b.user_id = ${userId}::uuid
+          AND  c.page_number = ${pageNumber}
+          AND  c.embedding  IS NOT NULL
+        ORDER BY c.embedding <=> ${vec}
         LIMIT  ${topK}
       `;
+
+      if (rows.length === 0)
+        throw new AppError("Book not found", StatusCodes.NOT_FOUND);
+
+      return rows;
     }
 
-    return prisma.$queryRaw<ChunkSearchResult[]>`
-      SELECT id,
-             book_id::text AS "bookId",
-             page_number   AS "pageNumber",
-             chunk_index   AS "chunkIndex",
-             content,
-             1 - (embedding <=> ${vec}) AS similarity
-      FROM   chunks
-      WHERE  book_id::text = ${bookId}
-        AND  embedding    IS NOT NULL
-      ORDER BY embedding <=> ${vec}
+    const rows = await prisma.$queryRaw<ChunkSearchResult[]>`
+      SELECT c.id,
+             c.book_id::text            AS "bookId",
+             c.page_number              AS "pageNumber",
+             c.chunk_index              AS "chunkIndex",
+             c.content,
+             1 - (c.embedding <=> ${vec}) AS similarity
+      FROM   chunks c
+      JOIN   books  b ON c.book_id = b.id
+      WHERE  b.id      = ${bookId}::uuid
+        AND  b.user_id = ${userId}::uuid
+        AND  c.embedding IS NOT NULL
+      ORDER BY c.embedding <=> ${vec}
       LIMIT  ${topK}
     `;
+
+    if (rows.length === 0)
+      throw new AppError("Book not found", StatusCodes.NOT_FOUND);
+
+    return rows;
   },
 
   async deleteChunksByBook(bookId: string): Promise<void> {

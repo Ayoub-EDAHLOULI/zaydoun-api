@@ -21,8 +21,9 @@ const userSelect = {
   id: true,
   name: true,
   email: true,
+  role: true,
   createdAt: true,
-};
+} as const;
 
 // Enforces session cap: deletes oldest sessions beyond MAX_SESSIONS_PER_USER, then creates a new one
 async function createSession(userId: string, refreshToken: string) {
@@ -65,6 +66,7 @@ export const authService = {
     const tokens = jwtUtils.generateTokens({
       userId: user.id,
       email: user.email,
+      role: user.role,
     });
     await createSession(user.id, tokens.refreshToken);
 
@@ -82,6 +84,7 @@ export const authService = {
         id: true,
         name: true,
         email: true,
+        role: true,
         password: true,
         createdAt: true,
       },
@@ -97,11 +100,17 @@ export const authService = {
     const tokens = jwtUtils.generateTokens({
       userId: user.id,
       email: user.email,
+      role: user.role,
     });
     await createSession(user.id, tokens.refreshToken);
 
     return {
-      user: { id: user.id, name: user.name, email: user.email },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
     };
@@ -110,7 +119,7 @@ export const authService = {
   async refreshToken(refreshToken: string) {
     const session = await prisma.session.findUnique({
       where: { refreshToken },
-      include: { user: true },
+      include: { user: { select: { id: true, email: true, role: true } } },
     });
 
     if (!session || session.expiresAt < new Date()) {
@@ -130,6 +139,7 @@ export const authService = {
       const accessToken = jwtUtils.generateAccessToken({
         userId: session.user.id,
         email: session.user.email,
+        role: session.user.role,
       });
 
       // Slide the expiry so the session stays alive
@@ -145,6 +155,7 @@ export const authService = {
     const tokens = jwtUtils.generateTokens({
       userId: session.user.id,
       email: session.user.email,
+      role: session.user.role,
     });
 
     await prisma.session.update({

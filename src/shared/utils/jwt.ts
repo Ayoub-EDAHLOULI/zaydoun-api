@@ -4,6 +4,7 @@ import { jwtConfig } from "../config/jwt";
 export interface JwtPayload {
   userId: string;
   email: string;
+  role: "USER" | "ADMIN";
 }
 
 export const jwtUtils = {

@@ -8,6 +8,11 @@ datasource db {
   extensions = [vector]
 }
 
+enum UserRole {
+  USER   // standard subscriber
+  ADMIN  // full platform access
+}
+
 // ---------------------------------------------------------------------------
 // USERS
 // ---------------------------------------------------------------------------
@@ -16,6 +21,7 @@ model User {
   email     String   @unique
   name      String?
   password  String
+  role      UserRole @default(USER)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

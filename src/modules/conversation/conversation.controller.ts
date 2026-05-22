@@ -71,10 +71,20 @@ export const conversationController = {
       req.body.languageCode as string | undefined,
     );
 
+    // Voice command: return the intent immediately, no audio to clean up
+    if (result.voiceIntent) {
+      return ApiResponse.success(
+        res,
+        { userText: result.userText, voiceIntent: result.voiceIntent },
+        "Voice command received",
+      );
+    }
+
     const { _aiAudioPath, ...payload } = result;
     ApiResponse.success(res, payload, "Zaydoun responded");
 
-    // Delete AI audio from disk after response is flushed — client has the URL
+    // Ghost Architecture: delete AI audio after response is flushed —
+    // client already has the URL in the payload
     await fileUtils.safeDelete(_aiAudioPath);
   }),
 
