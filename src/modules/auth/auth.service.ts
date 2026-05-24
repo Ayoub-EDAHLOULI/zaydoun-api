@@ -28,6 +28,7 @@ const userSelect = {
   name: true,
   email: true,
   role: true,
+  isActive: true,
   createdAt: true,
 } as const;
 
@@ -94,6 +95,7 @@ export const authService = {
         name: true,
         email: true,
         role: true,
+        isActive: true,
         password: true,
         createdAt: true,
       },
@@ -105,6 +107,12 @@ export const authService = {
     const isValid = await passwordUtils.compare(data.password, user.password);
     if (!isValid)
       throw new AppError("Invalid email or password", StatusCodes.UNAUTHORIZED);
+
+    if (!user.isActive)
+      throw new AppError(
+        "Your account has been deactivated. Please contact support.",
+        StatusCodes.FORBIDDEN,
+      );
 
     const tokens = jwtUtils.generateTokens({
       userId: user.id,
