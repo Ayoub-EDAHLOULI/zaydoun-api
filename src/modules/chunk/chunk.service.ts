@@ -10,28 +10,36 @@ const toVector = (embedding: number[]) =>
 
 export const chunkService = {
   async createChunks(chunks: CreateChunkDto[]): Promise<void> {
-    const queries = chunks.map((chunk) => {
-      const vec = toVector(chunk.embedding);
-      return prisma.$executeRaw`
-        INSERT INTO chunks (id, book_id, page_number, chunk_index, content, token_count, embedding, created_at)
-        VALUES (
-          gen_random_uuid(),
-          ${chunk.bookId}::uuid,
-          ${chunk.pageNumber},
-          ${chunk.chunkIndex},
-          ${chunk.content},
-          ${chunk.tokenCount},
-          ${vec},
-          NOW()
-        )
-        ON CONFLICT (book_id, page_number, chunk_index) DO UPDATE
-        SET content     = EXCLUDED.content,
-            token_count = EXCLUDED.token_count,
-            embedding   = EXCLUDED.embedding
-      `;
-    });
-
-    await prisma.$transaction(queries);
+    // Run inserts in batches of 20 without a wrapping transaction —
+    // avoids the 5 s interactive-transaction timeout on large books.
+    // Prisma.raw is required for ::uuid casts — tagged-template params bind as
+    // text by default and Postgres rejects "text = uuid" comparisons.
+    const BATCH = 20;
+    for (let i = 0; i < chunks.length; i += BATCH) {
+      const slice = chunks.slice(i, i + BATCH);
+      await Promise.all(
+        slice.map((chunk) => {
+          const vec = toVector(chunk.embedding);
+          return prisma.$executeRaw`
+            INSERT INTO chunks (id, book_id, page_number, chunk_index, content, token_count, embedding, created_at)
+            VALUES (
+              gen_random_uuid(),
+              ${chunk.bookId}::text::uuid,
+              ${chunk.pageNumber},
+              ${chunk.chunkIndex},
+              ${chunk.content},
+              ${chunk.tokenCount},
+              ${vec},
+              NOW()
+            )
+            ON CONFLICT (book_id, page_number, chunk_index) DO UPDATE
+            SET content     = EXCLUDED.content,
+                token_count = EXCLUDED.token_count,
+                embedding   = EXCLUDED.embedding
+          `;
+        }),
+      );
+    }
   },
 
   async getChunksByBook(bookId: string, userId: string): Promise<ChunkData[]> {
@@ -89,8 +97,15 @@ export const chunkService = {
   ): Promise<ChunkSearchResult[]> {
     const vec = toVector(queryEmbedding);
 
+    // Verify ownership before the vector search
+    const book = await prisma.book.findUnique({ where: { id: bookId } });
+    if (!book || book.userId !== userId)
+      throw new AppError("Book not found", StatusCodes.NOT_FOUND);
+
+    // Cast the uuid column to text for comparison — avoids the "text = uuid"
+    // operator error that occurs when Prisma binds string params as text.
     if (pageNumber != null) {
-      const rows = await prisma.$queryRaw<ChunkSearchResult[]>`
+      return prisma.$queryRaw<ChunkSearchResult[]>`
         SELECT c.id,
                c.book_id::text            AS "bookId",
                c.page_number              AS "pageNumber",
@@ -98,22 +113,15 @@ export const chunkService = {
                c.content,
                1 - (c.embedding <=> ${vec}) AS similarity
         FROM   chunks c
-        JOIN   books  b ON c.book_id = b.id
-        WHERE  b.id      = ${bookId}::uuid
-          AND  b.user_id = ${userId}::uuid
-          AND  c.page_number = ${pageNumber}
-          AND  c.embedding  IS NOT NULL
+        WHERE  c.book_id::text  = ${bookId}
+          AND  c.page_number    = ${pageNumber}
+          AND  c.embedding      IS NOT NULL
         ORDER BY c.embedding <=> ${vec}
         LIMIT  ${topK}
       `;
-
-      if (rows.length === 0)
-        throw new AppError("Book not found", StatusCodes.NOT_FOUND);
-
-      return rows;
     }
 
-    const rows = await prisma.$queryRaw<ChunkSearchResult[]>`
+    return prisma.$queryRaw<ChunkSearchResult[]>`
       SELECT c.id,
              c.book_id::text            AS "bookId",
              c.page_number              AS "pageNumber",
@@ -121,18 +129,11 @@ export const chunkService = {
              c.content,
              1 - (c.embedding <=> ${vec}) AS similarity
       FROM   chunks c
-      JOIN   books  b ON c.book_id = b.id
-      WHERE  b.id      = ${bookId}::uuid
-        AND  b.user_id = ${userId}::uuid
-        AND  c.embedding IS NOT NULL
+      WHERE  c.book_id::text  = ${bookId}
+        AND  c.embedding      IS NOT NULL
       ORDER BY c.embedding <=> ${vec}
       LIMIT  ${topK}
     `;
-
-    if (rows.length === 0)
-      throw new AppError("Book not found", StatusCodes.NOT_FOUND);
-
-    return rows;
   },
 
   async deleteChunksByBook(bookId: string): Promise<void> {

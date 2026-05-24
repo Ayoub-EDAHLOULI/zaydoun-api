@@ -1,5 +1,4 @@
 import fs from "fs";
-import path from "path";
 import OpenAI from "openai";
 import { prisma } from "../../lib/prisma";
 import { chunkService } from "../chunk/chunk.service";
@@ -9,7 +8,6 @@ import { StatusCodes } from "../../shared/constants/status-codes";
 import { fileUtils } from "../../shared/utils/file.util";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const AUDIO_DIR = path.join(process.cwd(), "public", "uploads", "audio");
 
 // ---------------------------------------------------------------------------
 // Voice command detection
@@ -80,9 +78,11 @@ export const chatService = {
       5,
     );
 
-    const contextText = relevantChunks
-      .map((c) => `[Page ${c.pageNumber}]: ${c.content}`)
-      .join("\n\n");
+    const contextText = relevantChunks.length
+      ? relevantChunks
+          .map((c) => `[Page ${c.pageNumber}]: ${c.content}`)
+          .join("\n\n")
+      : "No relevant excerpts found. Answer from your general knowledge about the book.";
 
     // Build conversation history — stored desc, need asc for LLM
     const chatHistory = [...conversation.messages].reverse().map((m) => ({
@@ -193,9 +193,11 @@ export const chatService = {
       5,
     );
 
-    const contextText = relevantChunks
-      .map((c) => `[Page ${c.pageNumber}]: ${c.content}`)
-      .join("\n\n");
+    const contextText = relevantChunks.length
+      ? relevantChunks
+          .map((c) => `[Page ${c.pageNumber}]: ${c.content}`)
+          .join("\n\n")
+      : "No relevant excerpts found. Answer from your general knowledge about the book.";
 
     // ==========================================
     // 4. BRAIN: GPT-4o-mini (RAG)
@@ -217,9 +219,9 @@ export const chatService = {
     const outputTokens = llmResponse.usage?.completion_tokens ?? 0;
 
     // ==========================================
-    // 5. MOUTH: TTS — Ghost Architecture
-    // AI audio is also ephemeral: written to disk only to stream to the client,
-    // then deleted by the controller after the response is flushed.
+    // 5. MOUTH: TTS — inline base64
+    // Return audio as a data URI in the JSON response so the mobile client
+    // plays it immediately without a second HTTP request or any temp file.
     // ==========================================
     const ttsResponse = await openai.audio.speech.create({
       model: "tts-1",
@@ -227,12 +229,8 @@ export const chatService = {
       input: aiText,
     });
 
-    const aiAudioFilename = `zaydoun-${Date.now()}.mp3`;
-    const aiAudioPath = path.join(AUDIO_DIR, aiAudioFilename);
     const buffer = Buffer.from(await ttsResponse.arrayBuffer());
-    await fs.promises.writeFile(aiAudioPath, buffer);
-
-    const relativeAudioUrl = `/uploads/audio/${aiAudioFilename}`;
+    const audioDataUri = `data:audio/mpeg;base64,${buffer.toString("base64")}`;
 
     const aiMessage = await conversationService.addMessage(
       conversationId,
@@ -240,7 +238,6 @@ export const chatService = {
       {
         role: "assistant",
         content: aiText,
-        audioPath: relativeAudioUrl,
         inputTokens,
         outputTokens,
       },
@@ -249,9 +246,9 @@ export const chatService = {
     return {
       userText,
       aiMessage,
-      audioUrl: relativeAudioUrl,
+      audioUrl: audioDataUri,
       voiceIntent: null,
-      _aiAudioPath: aiAudioPath, // absolute path — controller deletes after response is flushed
+      _aiAudioPath: null,
     };
   },
 };

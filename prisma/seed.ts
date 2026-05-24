@@ -28,24 +28,6 @@ async function main() {
 
   const SAMPLE_BOOK_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
 
-  // 2. Create a Sample Book for testing the Vector/RAG pipeline
-  const sampleBook = await prisma.book.upsert({
-    where: { id: SAMPLE_BOOK_ID },
-    update: {},
-    create: {
-      id: SAMPLE_BOOK_ID,
-      userId: adminUser.id,
-      title: "حي بن يقظان (Hayy ibn Yaqdhan)",
-      author: "Ibn Tufayl",
-      language: "ar",
-      totalPages: 120,
-      storagePath: "/uploads/books/hayy-ibn-yaqdhan.pdf",
-      status: "PENDING",
-    },
-  });
-
-  console.log(`📚 Sample book seeded: ${sampleBook.title}`);
-
   console.log("✅ Seeding finished successfully. Zaydoun is ready to read.");
 }
 

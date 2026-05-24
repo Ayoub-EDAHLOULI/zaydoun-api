@@ -5,7 +5,6 @@ import { StatusCodes } from "../../shared/constants/status-codes";
 import { catchAsync } from "../../shared/utils/catchAsync";
 import { chatService } from "../chat/chat.service";
 import { AppError } from "../../shared/utils/errors";
-import { fileUtils } from "../../shared/utils/file.util";
 
 export const conversationController = {
   listConversations: catchAsync(async (req: Request, res: Response) => {
@@ -80,12 +79,8 @@ export const conversationController = {
       );
     }
 
-    const { _aiAudioPath, ...payload } = result;
+    const { _aiAudioPath: _unused, ...payload } = result;
     ApiResponse.success(res, payload, "Zaydoun responded");
-
-    // Ghost Architecture: delete AI audio after response is flushed —
-    // client already has the URL in the payload
-    await fileUtils.safeDelete(_aiAudioPath);
   }),
 
   chatWithZaydoun: catchAsync(async (req: Request, res: Response) => {
