@@ -15,6 +15,7 @@ export const contactValidation = {
         .min(10, "Message must be at least 10 characters")
         .max(5000)
         .trim(),
+      captchaToken: z.string().min(1, "Captcha token is required"),
     }),
   }),
 };
