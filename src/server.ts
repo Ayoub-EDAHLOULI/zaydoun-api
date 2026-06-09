@@ -1,4 +1,3 @@
-import "./env";
 import app from "./app";
 import { startSessionJanitor } from "./jobs/session.janitor";
 

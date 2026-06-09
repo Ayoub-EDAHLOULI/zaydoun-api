@@ -6,7 +6,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "dev": "ts-node-dev --respawn --transpile-only --require ./src/env.ts src/server.ts",
-    "build": "tsc && node -e \"const fs=require('fs'),path=require('path');const src='src/services/email/templates',dst='dist/services/email/templates';fs.mkdirSync(dst,{recursive:true});fs.readdirSync(src).forEach(f=>fs.copyFileSync(path.join(src,f),path.join(dst,f)));\"",
+    "build": "tsc",
     "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -2,35 +2,40 @@ import nodemailer, { Transporter } from "nodemailer";
 import ejs from "ejs";
 import path from "path";
 import fs from "fs/promises";
-import { EmailOptions } from "./email.types";
+import { EmailConfig, EmailOptions } from "./email.types";
 
 class EmailService {
   private transporter: Transporter | null = null;
+  private config: EmailConfig;
 
-  private getTransporter(): Transporter | null {
-    if (this.transporter) return this.transporter;
-
-    const user = process.env.SMTP_USER || "";
-    const pass = process.env.SMTP_PASS || "";
-    if (!user || !pass) return null;
-
-    this.transporter = nodemailer.createTransport({
+  constructor() {
+    this.config = {
       host: process.env.SMTP_HOST || "smtp.gmail.com",
       port: parseInt(process.env.SMTP_PORT || "587"),
       secure: process.env.SMTP_SECURE === "true",
-      auth: { user, pass },
-      tls: { rejectUnauthorized: false },
-    });
-    return this.transporter;
-  }
-
-  private get config() {
-    return {
+      auth: {
+        user: process.env.SMTP_USER || "",
+        pass: process.env.SMTP_PASS || "",
+      },
       from: {
         name: process.env.SMTP_FROM_NAME || "Zaydoun",
         email: process.env.SMTP_FROM_EMAIL || "noreply@zaydoun.ai",
       },
     };
+
+    this.initialize();
+  }
+
+  private initialize() {
+    if (!this.config.auth.user || !this.config.auth.pass) return;
+
+    this.transporter = nodemailer.createTransport({
+      host: this.config.host,
+      port: this.config.port,
+      secure: this.config.secure,
+      auth: this.config.auth,
+      tls: { rejectUnauthorized: false },
+    });
   }
 
   private async renderTemplate(
@@ -52,33 +57,29 @@ class EmailService {
   }
 
   private async send(options: EmailOptions): Promise<boolean> {
-    const transporter = this.getTransporter();
-    if (!transporter) {
+    if (!this.transporter) {
       console.warn(
-        `[EMAIL] SMTP not configured (SMTP_USER/SMTP_PASS missing) — skipping: template="${options.template}"`,
+        `[EMAIL] SMTP not configured — skipping: template="${options.template}"`,
       );
       return false;
     }
 
-    const recipient = Array.isArray(options.to)
-      ? options.to.map((r) => r.email).join(", ")
-      : options.to.email;
-
     try {
       const html = await this.renderTemplate(options.template, options.context);
 
-      await transporter.sendMail({
+      await this.transporter.sendMail({
         from: `"${this.config.from.name}" <${this.config.from.email}>`,
-        to: recipient,
+        to: Array.isArray(options.to)
+          ? options.to.map((r) => r.email).join(", ")
+          : options.to.email,
         subject: options.subject,
         html,
       });
 
-      console.log(`[EMAIL] Sent template="${options.template}" to="${recipient}"`);
       return true;
     } catch (error) {
       console.error(
-        `[EMAIL] Failed to send template="${options.template}" to="${recipient}":`,
+        `[EMAIL] Failed to send (template="${options.template}"):`,
         error,
       );
       return false;

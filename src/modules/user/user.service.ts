@@ -173,16 +173,11 @@ export const userService = {
 
     const { _count, ...rest } = user;
 
-    console.log(`[EMAIL] Dispatching admin-created-account to ${rest.email}`);
-    emailService.sendAdminCreatedAccount(
+    void emailService.sendAdminCreatedAccount(
       rest.email,
       rest.name ?? rest.email,
       tempPassword,
-    ).then((sent) => {
-      console.log(`[EMAIL] sendAdminCreatedAccount result: ${sent}`);
-    }).catch((err: unknown) => {
-      console.error("[EMAIL] sendAdminCreatedAccount threw:", err);
-    });
+    );
 
     return {
       ...rest,
