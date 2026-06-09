@@ -26,22 +26,16 @@ class EmailService {
     this.initialize();
   }
 
-  private async initialize() {
-    try {
-      if (!this.config.auth.user || !this.config.auth.pass) return;
+  private initialize() {
+    if (!this.config.auth.user || !this.config.auth.pass) return;
 
-      this.transporter = nodemailer.createTransport({
-        host: this.config.host,
-        port: this.config.port,
-        secure: this.config.secure,
-        auth: this.config.auth,
-        tls: { rejectUnauthorized: false },
-      });
-
-      await this.transporter.verify();
-    } catch {
-      // SMTP not configured — emails will be skipped
-    }
+    this.transporter = nodemailer.createTransport({
+      host: this.config.host,
+      port: this.config.port,
+      secure: this.config.secure,
+      auth: this.config.auth,
+      tls: { rejectUnauthorized: false },
+    });
   }
 
   private async renderTemplate(
@@ -49,10 +43,7 @@ class EmailService {
     context: Record<string, unknown>,
   ): Promise<string> {
     const templatePath = path.join(
-      process.cwd(),
-      "src",
-      "services",
-      "email",
+      __dirname,
       "templates",
       `${templateName}.ejs`,
     );
@@ -68,27 +59,30 @@ class EmailService {
   private async send(options: EmailOptions): Promise<boolean> {
     if (!this.transporter) {
       console.warn(
-        `[EMAIL] SMTP not configured — skipping: template="${options.template}"`,
+        `[EMAIL] SMTP not configured (SMTP_USER/SMTP_PASS missing) — skipping: template="${options.template}"`,
       );
       return false;
     }
+
+    const recipient = Array.isArray(options.to)
+      ? options.to.map((r) => r.email).join(", ")
+      : options.to.email;
 
     try {
       const html = await this.renderTemplate(options.template, options.context);
 
       await this.transporter.sendMail({
         from: `"${this.config.from.name}" <${this.config.from.email}>`,
-        to: Array.isArray(options.to)
-          ? options.to.map((r) => r.email).join(", ")
-          : options.to.email,
+        to: recipient,
         subject: options.subject,
         html,
       });
 
+      console.log(`[EMAIL] Sent template="${options.template}" to="${recipient}"`);
       return true;
     } catch (error) {
       console.error(
-        `[EMAIL] Failed to send (template="${options.template}"):`,
+        `[EMAIL] Failed to send template="${options.template}" to="${recipient}":`,
         error,
       );
       return false;
