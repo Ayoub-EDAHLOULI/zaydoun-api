@@ -2,40 +2,35 @@ import nodemailer, { Transporter } from "nodemailer";
 import ejs from "ejs";
 import path from "path";
 import fs from "fs/promises";
-import { EmailConfig, EmailOptions } from "./email.types";
+import { EmailOptions } from "./email.types";
 
 class EmailService {
   private transporter: Transporter | null = null;
-  private config: EmailConfig;
 
-  constructor() {
-    this.config = {
+  private getTransporter(): Transporter | null {
+    if (this.transporter) return this.transporter;
+
+    const user = process.env.SMTP_USER || "";
+    const pass = process.env.SMTP_PASS || "";
+    if (!user || !pass) return null;
+
+    this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || "smtp.gmail.com",
       port: parseInt(process.env.SMTP_PORT || "587"),
       secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER || "",
-        pass: process.env.SMTP_PASS || "",
-      },
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false },
+    });
+    return this.transporter;
+  }
+
+  private get config() {
+    return {
       from: {
         name: process.env.SMTP_FROM_NAME || "Zaydoun",
         email: process.env.SMTP_FROM_EMAIL || "noreply@zaydoun.ai",
       },
     };
-
-    this.initialize();
-  }
-
-  private initialize() {
-    if (!this.config.auth.user || !this.config.auth.pass) return;
-
-    this.transporter = nodemailer.createTransport({
-      host: this.config.host,
-      port: this.config.port,
-      secure: this.config.secure,
-      auth: this.config.auth,
-      tls: { rejectUnauthorized: false },
-    });
   }
 
   private async renderTemplate(
@@ -57,7 +52,8 @@ class EmailService {
   }
 
   private async send(options: EmailOptions): Promise<boolean> {
-    if (!this.transporter) {
+    const transporter = this.getTransporter();
+    if (!transporter) {
       console.warn(
         `[EMAIL] SMTP not configured (SMTP_USER/SMTP_PASS missing) — skipping: template="${options.template}"`,
       );
@@ -71,7 +67,7 @@ class EmailService {
     try {
       const html = await this.renderTemplate(options.template, options.context);
 
-      await this.transporter.sendMail({
+      await transporter.sendMail({
         from: `"${this.config.from.name}" <${this.config.from.email}>`,
         to: recipient,
         subject: options.subject,
